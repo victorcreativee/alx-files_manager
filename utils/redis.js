@@ -1,19 +1,20 @@
-// utils/redis.js
-
 import { createClient } from 'redis';
 import { promisify } from 'util';
 
 class RedisClient {
   constructor() {
     this.client = createClient();
+
     this.client.on('error', (err) => {
       console.error('Redis Client Error:', err);
     });
 
-    this.connected = false;
+    this.connected = true;
+
     this.client.on('connect', () => {
       this.connected = true;
     });
+
     this.client.on('end', () => {
       this.connected = false;
     });
