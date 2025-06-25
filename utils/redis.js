@@ -1,24 +1,31 @@
-import redis from 'redis';
+import { createClient } from 'redis';
 
 class RedisClient {
     constructor() {
-        this.client = redis.createClient();
-        this.client.on('error', (error) => {
-            console.log(`Redis client not connected to the server: ${error}`);
+        this.client = createClient();
+        this.connected = false;
+
+        this.client.on('error', (err) => {
+            console.error('Redis Client Error:', err);
+        });
+
+        this.client.on('connect', () => {
+            this.connected = true;
+            console.log('Redis client connected and ready!');
         });
     }
 
     isAlive() {
-        return this.client.connected;
+        return this.connected;
     }
 
     async get(key) {
         return new Promise((resolve, reject) => {
-            this.client.get(key, (error, result) => {
-                if (error) {
-                    reject(error);
+            this.client.get(key, (err, reply) => {
+                if (err) {
+                    reject(err);
                 } else {
-                    resolve(result);
+                    resolve(reply);
                 }
             });
         });
@@ -26,11 +33,11 @@ class RedisClient {
 
     async set(key, value, duration) {
         return new Promise((resolve, reject) => {
-            this.client.setex(key, duration, value, (error, result) => {
-                if (error) {
-                    reject(error);
+            this.client.setex(key, duration, value, (err, reply) => {
+                if (err) {
+                    reject(err);
                 } else {
-                    resolve(result);
+                    resolve(reply);
                 }
             });
         });
@@ -38,11 +45,11 @@ class RedisClient {
 
     async del(key) {
         return new Promise((resolve, reject) => {
-            this.client.del(key, (error, result) => {
-                if (error) {
-                    reject(error);
+            this.client.del(key, (err, reply) => {
+                if (err) {
+                    reject(err);
                 } else {
-                    resolve(result);
+                    resolve(reply);
                 }
             });
         });
