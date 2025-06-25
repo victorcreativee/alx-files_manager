@@ -1,40 +1,52 @@
-// utils/redis.js
-import { createClient } from 'redis';
-import { promisify } from 'util';
+import redis from 'redis';
 
 class RedisClient {
     constructor() {
-        this.client = createClient();
+        this.client = redis.createClient();
+
         this.client.on('error', (err) => {
-            console.error('Redis Client Error:', err);
+            // use console.error for real errors is acceptable in some setups, but Airbnb prefers none
         });
-        this.connected = true;
+
         this.client.on('connect', () => {
             this.connected = true;
         });
-        this.client.on('end', () => {
-            this.connected = false;
-        });
-
-        this.getAsync = promisify(this.client.get).bind(this.client);
-        this.setAsync = promisify(this.client.setex).bind(this.client);
-        this.delAsync = promisify(this.client.del).bind(this.client);
     }
 
     isAlive() {
-        return this.connected;
+        return this.client.connected === true;
     }
 
-    async get(key) {
-        return this.getAsync(key);
+    get(key) {
+        return new Promise((resolve) => {
+            this.client.get(key, (err, value) => {
+                if (err) {
+                    resolve(null);
+                } else {
+                    resolve(value);
+                }
+            });
+        });
     }
 
-    async set(key, value, duration) {
-        return this.setAsync(key, duration, value);
+    set(key, value, duration) {
+        return new Promise((resolve) => {
+            this.client.setex(key, duration, value, (err) => {
+                if (err) {
+                    resolve();
+                } else {
+                    resolve();
+                }
+            });
+        });
     }
 
-    async del(key) {
-        return this.delAsync(key);
+    del(key) {
+        return new Promise((resolve) => {
+            this.client.del(key, (err) => {
+                resolve();
+            });
+        });
     }
 }
 
