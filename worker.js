@@ -1,27 +1,46 @@
-// worker.js
+import { createQueue } from 'bull';
 import { ObjectId } from 'mongodb';
-import fs from 'fs';
 import imageThumbnail from 'image-thumbnail';
-import fileQueue from './workers/fileQueue';
 import dbClient from './utils/db';
+import { writeFile, mkdir } from 'fs';
+import path from 'path';
+import { promisify } from 'util';
 
-fileQueue.process(async (job) => {
+const fileQueue = createQueue('fileQueue');
+const writeFileAsync = promisify(writeFile);
+const mkdirAsync = promisify(mkdir);
+
+fileQueue.process(async (job, done) => {
     const { fileId, userId } = job.data;
-    if (!fileId) throw new Error('Missing fileId');
-    if (!userId) throw new Error('Missing userId');
 
-    const file = await dbClient.db.collection('files').findOne({
-        _id: new ObjectId(fileId),
-        userId: new ObjectId(userId),
-    });
+    if (!fileId || !userId) {
+        done(new Error('Missing fileId or userId'));
+        return;
+    }
 
-    if (!file) throw new Error('File not found');
-    const sizes = [500, 250, 100];
+    const file = await dbClient.filesCollection.findOne({ _id: ObjectId(fileId), userId });
 
-    await Promise.all(
-        sizes.map(async (size) => {
-            const thumbnail = await imageThumbnail(file.localPath, { width: size });
-            await fs.promises.writeFile(`${file.localPath}_${size}`, thumbnail);
-        })
-    );
+    if (!file) {
+        done(new Error('File not found'));
+        return;
+    }
+
+    try {
+        const filePath = file.localPath;
+        const sizes = [500, 250, 100];
+
+        await Promise.all(sizes.map(async (size) => {
+            const thumbnail = await imageThumbnail(filePath, { width: size });
+            const dir = path.dirname(filePath);
+            const name = path.basename(filePath);
+
+            const thumbPath = path.join(dir, `${name}_${size}`);
+            await writeFileAsync(thumbPath, thumbnail);
+        }));
+
+        done();
+    } catch (err) {
+        console.error(err);
+        done(err);
+    }
 });

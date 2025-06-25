@@ -7,29 +7,42 @@ class DBClient {
         const port = process.env.DB_PORT || 27017;
         const dbName = process.env.DB_DATABASE || 'files_manager';
 
-        const uri = `mongodb://${host}:${port}`;
-        this.client = new MongoClient(uri, { useUnifiedTopology: true });
+        const url = `mongodb://${host}:${port}`;
+        this.client = new MongoClient(url, { useUnifiedTopology: true });
 
         this.client.connect()
             .then(() => {
                 this.db = this.client.db(dbName);
             })
             .catch((err) => {
-                console.error('MongoDB connection error:', err);
-                this.db = null;
+                console.error('MongoDB connection failed:', err.message);
             });
     }
 
     isAlive() {
-        return !!this.db;
+        return this.client && this.client.isConnected();
     }
 
     async nbUsers() {
-        return this.db ? this.db.collection('users').countDocuments() : 0;
+        return this.db.collection('users').countDocuments();
     }
 
     async nbFiles() {
-        return this.db ? this.db.collection('files').countDocuments() : 0;
+        return this.db.collection('files').countDocuments();
+    }
+
+    async getUser(filter) {
+        return this.db.collection('users').findOne(filter);
+    }
+
+    async createUser(userData) {
+        const result = await this.db.collection('users').insertOne(userData);
+        return result.ops[0];
+    }
+
+    async getUserById(id) {
+        const { ObjectId } = require('mongodb');
+        return this.db.collection('users').findOne({ _id: new ObjectId(id) });
     }
 }
 

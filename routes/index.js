@@ -7,15 +7,19 @@ import FilesController from '../controllers/FilesController';
 
 const router = express.Router();
 
+// App status
 router.get('/status', AppController.getStatus);
 router.get('/stats', AppController.getStats);
 
+// User management
 router.post('/users', UsersController.postNew);
 router.get('/users/me', UsersController.getMe);
 
+// Authentication
 router.get('/connect', AuthController.getConnect);
 router.get('/disconnect', AuthController.getDisconnect);
 
+// Files management
 router.post('/files', FilesController.postUpload);
 router.get('/files/:id', FilesController.getShow);
 router.get('/files', FilesController.getIndex);
