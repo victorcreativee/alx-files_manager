@@ -6,31 +6,67 @@ class DBClient {
         const port = process.env.DB_PORT || 27017;
         const database = process.env.DB_DATABASE || 'files_manager';
 
-        this.client = new MongoClient(`mongodb://${host}:${port}`, {
-            useUnifiedTopology: true,
-        });
+        const url = `mongodb://${host}:${port}`;
+        this.client = new MongoClient(url, { useUnifiedTopology: true });
+        this.dbName = database;
+        this.db = null;
+        this.connected = false;
 
-        this.client.connect().then(() => {
-            this.db = this.client.db(database);
-        }).catch((error) => {
-            console.log(error);
-        });
+        this.connect();
     }
 
+    async connect() {
+        try {
+            await this.client.connect();
+            this.db = this.client.db(this.dbName);
+            this.connected = true;
+            console.log('Connected to MongoDB');
+        } catch (err) {
+            console.error('MongoDB connection error:', err);
+            this.connected = false;
+            this.db = null;
+        }
+    }
+
+    /**
+     * Checks if the connection to MongoDB is alive
+     * @returns {boolean} true if connected, false otherwise
+     */
     isAlive() {
-        return this.client.isConnected();
+        return (
+            this.connected
+            && this.client
+            && this.client.topology
+            && this.client.topology.isConnected()
+        );
     }
 
+    /**
+     * Returns the number of documents in the users collection
+     * @returns {Promise<number>} number of users
+     */
     async nbUsers() {
-        const users = this.db.collection('users');
-        const usersCount = await users.countDocuments();
-        return usersCount;
+        if (!this.db) {
+            await this.connect();
+        }
+        if (!this.db) {
+            return 0;
+        }
+        return this.db.collection('users').countDocuments();
     }
 
+    /**
+     * Returns the number of documents in the files collection
+     * @returns {Promise<number>} number of files
+     */
     async nbFiles() {
-        const files = this.db.collection('files');
-        const filesCount = await files.countDocuments();
-        return filesCount;
+        if (!this.db) {
+            await this.connect();
+        }
+        if (!this.db) {
+            return 0;
+        }
+        return this.db.collection('files').countDocuments();
     }
 }
 
