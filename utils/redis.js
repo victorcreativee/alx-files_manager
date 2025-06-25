@@ -1,39 +1,55 @@
-import { createClient } from 'redis';
-import { promisify } from 'util';
+import redis from 'redis';
 
 class RedisClient {
     constructor() {
-        this.client = createClient();
-        this.connected = false;
+        this.client = redis.createClient();
+
+        this.client.on('error', (err) => {
+            console.error('Redis Client Error:', err.message);
+        });
 
         this.client.on('connect', () => {
             this.connected = true;
         });
-
-        this.client.on('error', (err) => {
-            this.connected = false;
-            console.error('Redis error:', err);
-        });
-
-        this.getAsync = promisify(this.client.get).bind(this.client);
-        this.setAsync = promisify(this.client.set).bind(this.client);
-        this.delAsync = promisify(this.client.del).bind(this.client);
     }
 
     isAlive() {
-        return this.connected;
+        return this.client.connected === true;
     }
 
-    async get(key) {
-        return this.getAsync(key);
+    get(key) {
+        return new Promise((resolve) => {
+            this.client.get(key, (err, value) => {
+                if (err) {
+                    console.error('Redis GET Error:', err.message);
+                    resolve(null);
+                } else {
+                    resolve(value);
+                }
+            });
+        });
     }
 
-    async set(key, value, duration) {
-        await this.setAsync(key, value, 'EX', duration);
+    set(key, value, duration) {
+        return new Promise((resolve) => {
+            this.client.setex(key, duration, value, (err) => {
+                if (err) {
+                    console.error('Redis SET Error:', err.message);
+                }
+                resolve();
+            });
+        });
     }
 
-    async del(key) {
-        await this.delAsync(key);
+    del(key) {
+        return new Promise((resolve) => {
+            this.client.del(key, (err) => {
+                if (err) {
+                    console.error('Redis DEL Error:', err.message);
+                }
+                resolve();
+            });
+        });
     }
 }
 
