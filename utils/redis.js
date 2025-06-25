@@ -3,51 +3,47 @@ import redis from 'redis';
 class RedisClient {
     constructor() {
         this.client = redis.createClient();
-
-        this.client.on('error', (err) => {
-            console.error('Redis Client Error:', err.message);
-        });
-
-        this.client.on('connect', () => {
-            this.connected = true;
+        this.client.on('error', (error) => {
+            console.log(`Redis client not connected to the server: ${error}`);
         });
     }
 
     isAlive() {
-        return this.client.connected === true;
+        return this.client.connected;
     }
 
-    get(key) {
-        return new Promise((resolve) => {
-            this.client.get(key, (err, value) => {
-                if (err) {
-                    console.error('Redis GET Error:', err.message);
-                    resolve(null);
+    async get(key) {
+        return new Promise((resolve, reject) => {
+            this.client.get(key, (error, result) => {
+                if (error) {
+                    reject(error);
                 } else {
-                    resolve(value);
+                    resolve(result);
                 }
             });
         });
     }
 
-    set(key, value, duration) {
-        return new Promise((resolve) => {
-            this.client.setex(key, duration, value, (err) => {
-                if (err) {
-                    console.error('Redis SET Error:', err.message);
+    async set(key, value, duration) {
+        return new Promise((resolve, reject) => {
+            this.client.setex(key, duration, value, (error, result) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
                 }
-                resolve();
             });
         });
     }
 
-    del(key) {
-        return new Promise((resolve) => {
-            this.client.del(key, (err) => {
-                if (err) {
-                    console.error('Redis DEL Error:', err.message);
+    async del(key) {
+        return new Promise((resolve, reject) => {
+            this.client.del(key, (error, result) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
                 }
-                resolve();
             });
         });
     }
